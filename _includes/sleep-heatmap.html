@@ -1,0 +1,189 @@
+{%- comment -%}
+  早睡打卡热力图
+  ────────────────────────────────────────────────────────────────────────
+  数据来自仓库根目录的 sleep-log.md（那篇笔记由 Obsidian 直接发布过来），
+  由 _plugins/sleep_log.rb 在构建时解析成 site.data['sleep']。
+
+  纯服务端渲染的 SVG，不依赖任何前端 JS：
+    * 手机打开很快
+    * 不会跟主题脚本打架
+    * 鼠标悬停的提示用 SVG 原生 <title>，零 JS
+
+  用法（在任意页面里）：
+      {% include sleep-heatmap.html lang=lang %}
+{%- endcomment -%}
+
+{% assign sleep = site.data.sleep %}
+
+{% if sleep and sleep.days and sleep.days.size > 0 %}
+
+  {%- comment -%} ── 几何参数（改这几个数就能调大小）───────────────── {%- endcomment -%}
+  {% assign cell = 12 %}
+  {% assign gap = 3 %}
+  {% assign pitch = cell | plus: gap %}
+  {% assign label_w = 24 %}
+  {% assign axis_h = 20 %}
+  {% assign total = sleep.days.size %}
+  {% assign offset = sleep.window.grid_offset | default: 0 %}
+
+  {%- comment -%} 前面补 offset 个空格子，再按每列 7 天分列 {%- endcomment -%}
+  {% assign slots = total | plus: offset %}
+  {% assign full_weeks = slots | divided_by: 7 %}
+  {% assign covered = full_weeks | times: 7 %}
+  {% assign remainder = slots | minus: covered %}
+  {% assign weeks = full_weeks %}
+  {% if remainder > 0 %}
+    {% assign weeks = full_weeks | plus: 1 %}
+  {% endif %}
+
+  {% assign plot_w = weeks | times: pitch %}
+  {% assign plot_h = 7 | times: pitch %}
+  {% assign svg_w = label_w | plus: plot_w | plus: 2 %}
+  {% assign svg_h = axis_h | plus: plot_h | plus: 2 %}
+
+  {%- comment -%} 星期标注文案（周一在第 0 行）{%- endcomment -%}
+  {% assign weekday_labels = '一,二,三,四,五,六,日' | split: ',' %}
+
+  <div class="sleep-heatmap">
+    <div class="sleep-heatmap__head">
+      <h2 class="sleep-heatmap__title">早睡打卡</h2>
+      <div class="sleep-heatmap__range">
+        {{ sleep.window.start }} ~ {{ sleep.window.end }}
+        <span class="sleep-heatmap__threshold">（{{ sleep.early_threshold }} 前入睡算早睡）</span>
+      </div>
+    </div>
+
+    <div class="sleep-heatmap__stats">
+      <div class="sleep-heatmap__stat">
+        <span class="sleep-heatmap__stat-value">{{ sleep.stats.early_rate }}%</span>
+        <span class="sleep-heatmap__stat-label">早睡率</span>
+      </div>
+      <div class="sleep-heatmap__stat">
+        <span class="sleep-heatmap__stat-value">{{ sleep.stats.early_days }}</span>
+        <span class="sleep-heatmap__stat-label">早睡天数</span>
+      </div>
+      <div class="sleep-heatmap__stat">
+        <span class="sleep-heatmap__stat-value">{{ sleep.stats.streak_current }}</span>
+        <span class="sleep-heatmap__stat-label">当前连续</span>
+      </div>
+      <div class="sleep-heatmap__stat">
+        <span class="sleep-heatmap__stat-value">{{ sleep.stats.streak_best }}</span>
+        <span class="sleep-heatmap__stat-label">最长连续</span>
+      </div>
+      <div class="sleep-heatmap__stat">
+        <span class="sleep-heatmap__stat-value">{{ sleep.stats.recorded_days }}</span>
+        <span class="sleep-heatmap__stat-label">有记录天数</span>
+      </div>
+    </div>
+
+    <div class="sleep-heatmap__scroll">
+      <svg
+        class="sleep-heatmap__svg"
+        width="{{ svg_w }}"
+        height="{{ svg_h }}"
+        viewBox="0 0 {{ svg_w }} {{ svg_h }}"
+        role="img"
+        aria-label="早睡打卡热力图：{{ sleep.window.start }} 至 {{ sleep.window.end }}"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {%- comment -%} 星期标注：一 / 三 / 五 {%- endcomment -%}
+        {% for wd in (0..6) %}
+          {% assign is_labeled = false %}
+          {% if wd == 0 or wd == 2 or wd == 4 %}{% assign is_labeled = true %}{% endif %}
+          {% if is_labeled %}
+            {% assign ty = wd | times: pitch | plus: axis_h | plus: 9 %}
+            <text class="shm-axis" x="{{ label_w | minus: 5 }}" y="{{ ty }}" text-anchor="end">{{ weekday_labels[wd] }}</text>
+          {% endif %}
+        {% endfor %}
+
+        {%- comment -%} 月份标注 + 月份分隔线，只在每列第一行判断 {%- endcomment -%}
+        {% assign prev_month = '' %}
+        {% for day in sleep.days %}
+          {% assign slot = forloop.index0 | plus: offset %}
+          {% assign row = slot | modulo: 7 %}
+          {% if row != 0 %}{% continue %}{% endif %}
+
+          {% assign col = slot | divided_by: 7 %}
+          {% assign x = col | times: pitch | plus: label_w %}
+          {% assign this_month = day.date | slice: 0, 7 %}
+
+          {% if this_month != prev_month %}
+            {% if prev_month != '' %}
+              <line
+                class="shm-grid"
+                x1="{{ x | minus: 2 }}"
+                y1="{{ axis_h }}"
+                x2="{{ x | minus: 2 }}"
+                y2="{{ axis_h | plus: plot_h }}"
+              />
+            {% endif %}
+            <text class="shm-axis shm-month" x="{{ x }}" y="{{ axis_h | minus: 7 }}">{{ day.date | slice: 5, 2 }}月</text>
+            {% assign prev_month = this_month %}
+          {% endif %}
+        {% endfor %}
+
+        {%- comment -%} 数据格子 {%- endcomment -%}
+        {% for day in sleep.days %}
+          {% assign slot = forloop.index0 | plus: offset %}
+          {% assign col = slot | divided_by: 7 %}
+          {% assign row = slot | modulo: 7 %}
+          {% assign x = col | times: pitch | plus: label_w %}
+          {% assign y = row | times: pitch | plus: axis_h %}
+
+          {% if day.early == true %}
+            {% assign level = 'is-early' %}
+            {% assign verdict = '早睡' %}
+          {% elsif day.early == false %}
+            {% assign level = 'is-late' %}
+            {% assign verdict = '没早睡' %}
+          {% else %}
+            {% assign level = 'is-empty' %}
+            {% assign verdict = '没有记录' %}
+          {% endif %}
+
+          <g class="shm-group">
+            <title>
+              {{- day.date }} · {{ verdict -}}
+              {%- if day.sleep_at %} · 入睡 {{ day.sleep_at }}{% endif -%}
+              {%- if day.wake_at %} · 起床 {{ day.wake_at }}{% endif -%}
+            </title>
+            <rect
+              class="shm-cell {{ level }}"
+              x="{{ x }}"
+              y="{{ y }}"
+              width="{{ cell }}"
+              height="{{ cell }}"
+              rx="2.5"
+            ></rect>
+          </g>
+        {% endfor %}
+      </svg>
+    </div>
+
+    <div class="sleep-heatmap__legend">
+      <span class="shm-legend-label">没记录</span>
+      <span class="shm-swatch is-empty"></span>
+      <span class="shm-swatch is-late"></span>
+      <span class="shm-swatch is-early"></span>
+      <span class="shm-legend-label">早睡</span>
+    </div>
+
+    <p class="sleep-heatmap__note">
+      数据来自 Obsidian 里「早睡打卡」那篇笔记的复选框，
+      每勾一天就多一个格子。共 {{ sleep.stats.recorded_days }} 天有记录。
+    </p>
+  </div>
+
+{% else %}
+
+  <div class="sleep-heatmap sleep-heatmap--empty">
+    <h2 class="sleep-heatmap__title">早睡打卡</h2>
+    <p>
+      还没有读到打卡数据。请在仓库根目录建立 <code>sleep-log.md</code>，
+      内容形如：
+    </p>
+    <pre><code>- [x] 2026-10-08 23:05 07:30
+- [ ] 2026-10-07</code></pre>
+  </div>
+
+{% endif %}

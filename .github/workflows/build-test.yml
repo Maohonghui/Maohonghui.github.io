@@ -1,0 +1,86 @@
+name: "Build Test"
+
+# 只做「构建 + 校验」，不会部署到线上。
+# 用途：在没有本地 Ruby 环境时，先确认站点能被 Jekyll 正常构建、
+# 并且 htmlproofer 全部通过，再决定要不要合并到 main 触发正式发布。
+#
+# 触发方式：
+#   * 在 Actions 页面手动点 "Run workflow"
+#   * 往 main 提 Pull Request
+#   * 往 validate/** 分支推送（用于临时验证，不会影响线上）
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - "validate/**"
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.4
+          bundler-cache: true
+
+      - name: Build site
+        run: bundle exec jekyll b -d "_site"
+        env:
+          JEKYLL_ENV: "production"
+
+      # 把 Front Matter 规范化插件的诊断信息打出来，方便排查是哪篇文章有问题
+      - name: Show normalizer diagnostics
+        if: always()
+        run: |
+          echo "::group::_posts front matter"
+          for f in _posts/*; do
+            echo "----- $f"
+            sed -n '1,25p' "$f"
+          done
+          echo "::endgroup::"
+
+      - name: Test site
+        run: |
+          bundle exec htmlproofer "_site" \
+            --disable-external \
+            --ignore-urls "/^http:\/\/127.0.0.1/,/^http:\/\/0.0.0.0/,/^http:\/\/localhost/"
+
+      # 确认没有生成 `/{` 或 `/{"path"` 这种非法路径。
+      # 以前 image 前端数据没被规范化时，首页会出现：
+      #   <img src="/{"path"=>nil}" alt="Preview Image">
+      # 这里对整份 HTML 做地毯式检查，避免漏掉。
+      - name: Guard against malformed image URLs
+        run: |
+          if grep -rInF '/{"' _site --include='*.html'; then
+            echo "::error::发现 /{\" 形式的非法路径，说明 Front Matter 里的 image 没有被正确规范化"
+            exit 1
+          fi
+          if grep -rInE '(src|href)="/\{' _site --include='*.html'; then
+            echo "::error::发现以 /{ 开头的 src/href，说明 Front Matter 里的 image 没有被正确规范化"
+            exit 1
+          fi
+          echo "OK: 没有发现非法图片/链接路径"
+
+      - name: Upload built site for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-site
+          path: _site
+          retention-days: 5

@@ -1,1 +1,36 @@
+<!-- The Footer -->
 
+{%- comment -%}
+  这个文件本来是主题自带的 footer，之前被清空了 —— 那会连带把评论区搞坏。
+
+  原因：_includes/comments/giscus.html 里有这么一行
+
+      const $footer = document.querySelector('footer');
+      $footer.insertAdjacentElement("beforebegin", giscusNode);
+
+  它要靠页面里的 <footer> 元素当锚点来插入评论 iframe。
+  footer 不存在时，$footer 是 null，抛 TypeError，评论脚本直接中断，
+  所以页面上根本看不到 giscus 评论区。
+
+  现在 footer 恢复了。这里只保留 "© 年份 作者" 一行，
+  原来第二行的 "本站采用 Jekyll 主题 Chirpy" 已按要求去掉。
+{%- endcomment -%}
+
+<footer
+  aria-label="Site Info"
+  class="
+    d-flex flex-column justify-content-center text-muted
+    flex-lg-row justify-content-lg-between align-items-lg-center pb-lg-3
+  "
+>
+  <p>
+    {{- '©' }}
+    <time>{{ 'now' | date: '%Y' }}</time>
+
+    {% if site.social.links %}
+      <a href="{{ site.social.links[0] }}">{{ site.social.name }}</a>.
+    {% else %}
+      <em class="fst-normal">{{ site.social.name }}</em>.
+    {% endif %}
+  </p>
+</footer>

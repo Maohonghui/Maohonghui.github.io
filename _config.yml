@@ -10,7 +10,7 @@ title: "我的个人博客"
 
 tagline: "记录与分享"
 
-description: 
+description: "记录与分享，一个用于存放笔记与想法的个人空间。"
 
 url: "https://maohonghui.github.io"
 
@@ -43,7 +43,9 @@ theme_mode: light
 
 cdn:
 
-avatar: "https://github.com/Maohonghui.png"
+# 头像：把图片放进 assets/img/ 后改成 "/assets/img/你的图片.png"
+# 用绝对路径（以 / 开头）时 Chirpy 不会额外拼接 baseurl，最可靠。
+avatar: "/assets/img/avatar.png"
 
 social_preview_image:
 
@@ -77,14 +79,29 @@ assets:
   self_host:
     enabled:
 
+# ── PWA / Service Worker ────────────────────────────────────────────────────
+# cache.enabled: true 会让 Chirpy 注册一个 Cache-First 的 Service Worker
+# （sw.min.js）。它会缓存首页和所有静态资源，导致"Ctrl+F5 之后是好的，
+# 一点站内链接又变回旧的"这种现象。
+#
+# cache.enabled: false 时 app.js 会走 unregister 分支，自动注销所有旧的
+# Service Worker，从根上解决缓存陈旧问题。个人博客不需要离线浏览，建议保持 false。
 pwa:
-  enabled: true
+  enabled: false
   cache:
-    enabled: true
+    enabled: false
 
 paginate: 10
 
 baseurl: ""
+
+# ── 早睡打卡热力图 ──────────────────────────────────────────────────────────
+# 数据来自仓库根目录的 sleep-log.md，那篇笔记由手机 Obsidian 直接发布过来，
+# 由 _plugins/sleep_log.rb 在构建时解析。
+sleep_log:
+  file: sleep-log.md      # 打卡笔记在仓库里的路径
+  days: 91                # 热力图统计多少天（13 周）
+  threshold: "23:00"      # 几点之前入睡算「早睡」
 
 # ------------ The following options are not recommended to be modified ------------------
 
@@ -142,6 +159,7 @@ exclude:
   - "*.gemspec"
   - docs
   - tools
+  - obsidian
   - README.md
   - LICENSE
   - purgecss.js

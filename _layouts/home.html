@@ -1,0 +1,161 @@
+---
+layout: default
+---
+
+{% include lang.html %}
+
+{% assign all_pinned = site.posts | where: 'pin', 'true' %}
+{% assign all_normal = site.posts | where_exp: 'item', 'item.pin != true and item.hidden != true' %}
+
+{% assign posts = '' | split: '' %}
+
+<!-- Get pinned posts on current page -->
+
+{% assign visible_start = paginator.page | minus: 1 | times: paginator.per_page %}
+{% assign visible_end = visible_start | plus: paginator.per_page %}
+
+{% if all_pinned.size > visible_start %}
+  {% if all_pinned.size > visible_end %}
+    {% assign pinned_size = paginator.per_page %}
+  {% else %}
+    {% assign pinned_size = all_pinned.size | minus: visible_start %}
+  {% endif %}
+
+  {% for i in (visible_start..all_pinned.size) limit: pinned_size %}
+    {% assign posts = posts | push: all_pinned[i] %}
+  {% endfor %}
+{% else %}
+  {% assign pinned_size = 0 %}
+{% endif %}
+
+<!-- Get normal posts on current page -->
+
+{% assign normal_size = paginator.posts | size | minus: pinned_size %}
+
+{% if normal_size > 0 %}
+  {% if pinned_size > 0 %}
+    {% assign normal_start = 0 %}
+  {% else %}
+    {% assign normal_start = visible_start | minus: all_pinned.size %}
+  {% endif %}
+
+  {% assign normal_end = normal_start | plus: normal_size | minus: 1 %}
+
+  {% for i in (normal_start..normal_end) %}
+    {% assign posts = posts | push: all_normal[i] %}
+  {% endfor %}
+{% endif %}
+
+<div id="post-list" class="flex-grow-1 px-xl-1">
+  {% for post in posts %}
+    <article class="card-wrapper card">
+      <a href="{{ post.url | relative_url }}" class="post-preview row g-0 flex-md-row-reverse">
+        {% assign card_body_col = '12' %}
+
+        {%- comment -%}
+          封面图。
+
+          主题原来的写法是 `post.image.path | default: post.image`：当 Front Matter 里
+          写了 `image:` 但没有有效路径时（Obsidian 很容易生成这种），`post.image.path`
+          取不到值，default 就退回到整个哈希对象，于是渲染出：
+
+              <img src="/{"path"=>nil}" alt="Preview Image">
+
+          浏览器会把它当成相对路径 /{ 去请求，结果 404、首页出现裂图，
+          htmlproofer 也会报 "internal image /{ does not exist"。
+
+          下面先算出封面路径，再做一次类型与内容校验：
+          只要它不是一个「像路径的字符串」，就当作这篇文章没有封面。
+        {%- endcomment -%}
+        {% assign cover = post.image.path | default: post.image %}
+
+        {% if cover and cover != empty %}
+          {% assign cover_src = cover | append: '' | strip %}
+
+          {% if cover_src != '' and cover_src contains '/' %}
+            {% unless cover_src contains '{' or cover_src contains '=>' %}
+              {% if post.media_subpath %}
+                {% unless cover_src contains '://' %}
+                  {% assign cover_src = post.media_subpath
+                    | append: '/'
+                    | append: cover_src
+                    | replace: '///', '/'
+                    | replace: '//', '/'
+                  %}
+                {% endunless %}
+              {% endif %}
+
+              {% if post.image.lqip %}
+                {% assign lqip = post.image.lqip %}
+
+                {% if post.media_subpath %}
+                  {% unless lqip contains 'data:' %}
+                    {% assign lqip = post.media_subpath
+                      | append: '/'
+                      | append: lqip
+                      | replace: '///', '/'
+                      | replace: '//', '/'
+                    %}
+                  {% endunless %}
+                {% endif %}
+
+                {% assign lqip_attr = 'lqip="' | append: lqip | append: '"' %}
+              {% endif %}
+
+              {% assign alt = post.image.alt | xml_escape | default: 'Preview Image' %}
+
+              <div class="col-md-5">
+                <img src="{{ cover_src }}" alt="{{ alt }}" {{ lqip_attr }}>
+              </div>
+
+              {% assign card_body_col = '7' %}
+            {% endunless %}
+          {% endif %}
+        {% endif %}
+
+        <div class="col-md-{{ card_body_col }}">
+          <div class="card-body d-flex flex-column">
+            <h1 class="card-title my-2 mt-md-0">{{ post.title }}</h1>
+
+            <div class="card-text content mt-0 mb-3">
+              <p>{% include post-summary.html %}</p>
+            </div>
+
+            <div class="post-meta flex-grow-1 d-flex align-items-end">
+              <div class="me-auto">
+                <!-- posted date -->
+                <i class="far fa-calendar fa-fw me-1"></i>
+                {% include datetime.html date=post.date lang=lang %}
+
+                <!-- categories -->
+                {% if post.categories.size > 0 %}
+                  <i class="far fa-folder-open fa-fw me-1"></i>
+                  <span class="categories">
+                    {% for category in post.categories %}
+                      {{ category }}
+                      {%- unless forloop.last -%},{%- endunless -%}
+                    {% endfor %}
+                  </span>
+                {% endif %}
+              </div>
+
+              {% if post.pin %}
+                <div class="pin ms-1">
+                  <i class="fas fa-thumbtack fa-fw"></i>
+                  <span>{{ site.data.locales[lang].post.pin_prompt }}</span>
+                </div>
+              {% endif %}
+            </div>
+            <!-- .post-meta -->
+          </div>
+          <!-- .card-body -->
+        </div>
+      </a>
+    </article>
+  {% endfor %}
+</div>
+<!-- #post-list -->
+
+{% if paginator.total_pages > 1 %}
+  {% include post-paginator.html %}
+{% endif %}

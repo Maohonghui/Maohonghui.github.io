@@ -1,0 +1,178 @@
+---
+# 这两行 front matter 是必须的。
+# Jekyll 只处理「带 front matter 的文件」；没有它的话 .scss 可能被当成普通静态文件
+# 直接复制，结果产出 sleep-heatmap.scss 而不是 sleep-heatmap.css，
+# 页面上引用的 /assets/css/sleep-heatmap.css 就会 404（htmlproofer 也会报错）。
+---
+
+/*!
+ * 早睡打卡热力图样式
+ * ---------------------------------------------------------------------------
+ * 颜色统一用 Chirpy 主题的 CSS 变量，会自动跟随浅色 / 深色模式切换。
+ * 只作用于 .sleep-heatmap 内部，不会影响站内其他元素。
+ */
+
+.sleep-heatmap {
+  margin: 1.75rem 0;
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  &__range {
+    font-size: 0.85rem;
+    color: var(--text-muted-color, #6c757d);
+  }
+
+  &__threshold {
+    opacity: 0.8;
+  }
+
+  /* ── 统计数字 ─────────────────────────────────────────────── */
+  &__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  &__stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 4.5rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--main-border-color, rgba(128, 128, 128, 0.25));
+    border-radius: 0.5rem;
+  }
+
+  &__stat-value {
+    font-size: 1.15rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  &__stat-label {
+    font-size: 0.72rem;
+    color: var(--text-muted-color, #6c757d);
+    white-space: nowrap;
+  }
+
+  /* ── 图区 ─────────────────────────────────────────────────── */
+  &__scroll {
+    overflow-x: auto;
+    padding-bottom: 0.35rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  &__svg {
+    display: block;
+    height: auto;
+    max-width: none;
+  }
+
+  &__legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.3rem;
+    margin-top: 0.6rem;
+    font-size: 0.75rem;
+    color: var(--text-muted-color, #6c757d);
+  }
+
+  &__note {
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted-color, #6c757d);
+  }
+
+  &--empty {
+    padding: 1rem 1.25rem;
+    border: 1px dashed var(--main-border-color, rgba(128, 128, 128, 0.35));
+    border-radius: 0.5rem;
+  }
+}
+
+/* ── SVG 内部元素 ──────────────────────────────────────────── */
+.shm-axis {
+  font-size: 9px;
+  fill: var(--text-muted-color, #6c757d);
+}
+
+.shm-month {
+  font-size: 10px;
+}
+
+.shm-grid {
+  stroke: var(--main-border-color, rgba(128, 128, 128, 0.3));
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.shm-cell {
+  transition: opacity 0.15s ease;
+}
+
+.shm-group:hover .shm-cell {
+  opacity: 0.7;
+}
+
+/* 没有记录：几乎透明的底 */
+.shm-cell.is-empty,
+.shm-swatch.is-empty {
+  fill: var(--main-border-color, rgba(128, 128, 128, 0.18));
+  background-color: var(--main-border-color, rgba(128, 128, 128, 0.18));
+  opacity: 0.45;
+}
+
+/* 有记录但没早睡：偏红 */
+.shm-cell.is-late,
+.shm-swatch.is-late {
+  fill: #d9534f;
+  background-color: #d9534f;
+}
+
+/* 早睡：绿 */
+.shm-cell.is-early,
+.shm-swatch.is-early {
+  fill: #2e8840;
+  background-color: #2e8840;
+}
+
+.shm-swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 2.5px;
+  opacity: 1;
+}
+
+.shm-legend-label {
+  margin: 0 0.15rem;
+}
+
+/* 深色模式下把绿色调亮一点，保证对比度 */
+[data-bs-theme='dark'] {
+  .shm-cell.is-early,
+  .shm-swatch.is-early {
+    fill: #3fae56;
+    background-color: #3fae56;
+  }
+
+  .shm-cell.is-late,
+  .shm-swatch.is-late {
+    fill: #e2685f;
+    background-color: #e2685f;
+  }
+}

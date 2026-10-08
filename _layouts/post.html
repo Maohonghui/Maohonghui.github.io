@@ -1,0 +1,185 @@
+---
+layout: default
+panel_includes:
+  - toc
+tail_includes:
+  - related-posts
+  - post-nav
+script_includes:
+  - comment
+---
+
+{% include lang.html %}
+
+{% include toc-status.html %}
+
+<article class="px-1" data-toc="{{ enable_toc }}">
+  <header>
+    <h1 data-toc-skip>{{ page.title }}</h1>
+    {% if page.description %}
+      <p class="post-desc fw-light mb-4">{{ page.description }}</p>
+    {% endif %}
+
+    <div class="post-meta text-muted">
+      <!-- published date -->
+      <span>
+        {{ site.data.locales[lang].post.posted }}
+        {% include datetime.html date=page.date tooltip=true lang=lang %}
+      </span>
+
+      <!-- lastmod date -->
+      {% if page.last_modified_at and page.last_modified_at != page.date %}
+        <span>
+          {{ site.data.locales[lang].post.updated }}
+          {% include datetime.html date=page.last_modified_at tooltip=true lang=lang %}
+        </span>
+      {% endif %}
+
+      {%- comment -%}
+        文章封面图。
+
+        主题原来写的是 `page.image.path | default: page.image`，
+        当 `image:` 存在却没有有效路径时会把整个哈希对象渲染进 src，
+        得到 `/{"path"=>nil}` 这种坏链接。这里改成先校验再输出，
+        校验不通过就当作「没有封面」，页面正常显示，不再出现裂图。
+      {%- endcomment -%}
+      {% assign preview = page.image.path | default: page.image %}
+      {% if preview and preview != empty %}
+        {% assign preview_str = preview | append: '' | strip %}
+        {% if preview_str != '' and preview_str contains '/' %}
+          {% unless preview_str contains '{' or preview_str contains '=>' %}
+            {% capture src %}src="{{ preview_str | strip }}"{% endcapture %}
+            {% capture class %}class="preview-img{% if page.image.no_bg %}{{ ' no-bg' }}{% endif %}"{% endcapture %}
+            {% capture alt %}alt="{{ page.image.alt | xml_escape | default: "Preview Image" }}"{% endcapture %}
+
+            {% if page.image.lqip %}
+              {%- capture lqip -%}lqip="{{ page.image.lqip }}"{%- endcapture -%}
+            {% endif %}
+
+            <div class="mt-3 mb-3">
+              <img {{ src }} {{ class }} {{ alt }} w="1200" h="630" {{ lqip }}>
+              {%- if page.image.alt -%}
+                <figcaption class="text-center pt-2 pb-2">{{ page.image.alt }}</figcaption>
+              {%- endif -%}
+            </div>
+          {% endunless %}
+        {% endif %}
+      {% endif %}
+
+      <div class="d-flex justify-content-between">
+        <!-- author(s) -->
+        <span>
+          {% if page.author %}
+            {% assign authors = page.author %}
+          {% elsif page.authors %}
+            {% assign authors = page.authors %}
+          {% endif %}
+
+          {{ site.data.locales[lang].post.written_by }}
+
+          <em>
+            {% if authors %}
+              {% for author in authors %}
+                {% if site.data.authors[author].url -%}
+                  <a href="{{ site.data.authors[author].url }}">{{ site.data.authors[author].name }}</a>
+                {%- else -%}
+                  {{ site.data.authors[author].name }}
+                {%- endif %}
+                {% unless forloop.last %}{{ '</em>, <em>' }}{% endunless %}
+              {% endfor %}
+            {% else %}
+              <a href="{{ site.social.links[0] }}">{{ site.social.name }}</a>
+            {% endif %}
+          </em>
+        </span>
+
+        <div>
+          <!-- pageviews -->
+          {% if site.pageviews.provider and site.analytics[site.pageviews.provider].id %}
+            <span>
+              <em id="pageviews">
+                <i class="fas fa-spinner fa-spin small"></i>
+              </em>
+              {{ site.data.locales[lang].post.pageview_measure }}
+            </span>
+          {% endif %}
+
+          <!-- read time -->
+          {% include read-time.html content=content prompt=true lang=lang %}
+        </div>
+      </div>
+    </div>
+  </header>
+
+  {% if enable_toc %}
+    <div id="toc-bar" class="d-flex align-items-center justify-content-between invisible">
+      <span class="label text-truncate">{{ page.title }}</span>
+      <button type="button" class="toc-trigger btn me-1">
+        <i class="fa-solid fa-list-ul fa-fw"></i>
+      </button>
+    </div>
+
+    <button id="toc-solo-trigger" type="button" class="toc-trigger btn btn-outline-secondary btn-sm">
+      <span class="label ps-2 pe-1">{{- site.data.locales[lang].panel.toc -}}</span>
+      <i class="fa-solid fa-angle-right fa-fw"></i>
+    </button>
+
+    <dialog id="toc-popup" class="p-0">
+      <div class="header d-flex flex-row align-items-center justify-content-between">
+        <div class="label text-truncate py-2 ms-4">{{- page.title -}}</div>
+        <button id="toc-popup-close" type="button" class="btn-close btn-sm mx-3" aria-label="Close"></button>
+      </div>
+      <div id="toc-popup-content" class="px-4 py-3 pb-4"></div>
+    </dialog>
+  {% endif %}
+
+  <div class="content">
+    {{ content }}
+  </div>
+
+  {%- comment -%}
+    ── 文章底部 ──────────────────────────────────────────────────────────────
+    原主题这里是 `div.post-tail-wrapper > .post-tail-bottom`，里面放了两块内容：
+
+      1. .license-wrapper —— “本文由作者按照 CC BY 4.0 进行授权”
+      2. post-sharing.html —— Twitter / Facebook / 复制链接 等分享按钮
+
+    按你的要求两块都已经移除。连带把整个 .post-tail-bottom 容器也去掉了，
+    因为分享按钮是这个容器里唯一的右半部分，容器空着只会多出一条分隔线。
+
+    分类、标签、"编辑此文" 链接都保留在上面，文章底部不会变得空荡荡。
+  {%- endcomment -%}
+  <div class="post-tail-wrapper text-muted">
+    <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+      <!-- categories -->
+      {% if page.categories.size > 0 %}
+        <div class="post-meta">
+          <i class="far fa-folder-open fa-fw me-1"></i>
+          {% for category in page.categories %}
+            <a href="{{ site.baseurl }}/categories/{{ category | slugify | url_encode }}/">{{ category }}</a>
+            {%- unless forloop.last -%},{%- endunless -%}
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- "Edit this post" link -->
+      {% include post-edit.html lang=lang %}
+    </div>
+
+    <!-- tags -->
+    {% if page.tags.size > 0 %}
+      <div class="post-tags">
+        <i class="fa fa-tags fa-fw me-1"></i>
+        {% for tag in page.tags %}
+          <a
+            href="{{ site.baseurl }}/tags/{{ tag | slugify | url_encode }}/"
+            class="post-tag no-text-decoration"
+          >
+            {{- tag -}}
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  <!-- div.post-tail-wrapper -->
+</article>
