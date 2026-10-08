@@ -24,19 +24,27 @@
 
   <nav class="flex-column flex-grow-1 w-100 ps-0">
     <ul class="nav">
-      <!-- home -->
+      <!-- 首页 -->
       <li class="nav-item{% if page.layout == 'home' %}{{ ' active' }}{% endif %}">
         <a href="{{ '/' | relative_url }}" class="nav-link">
           <i class="fa-fw fas fa-home"></i>
-          <span>{{ site.data.locales[include.lang].tabs.home | default: 'Home' | upcase }}</span>
+          <span>首页</span>
         </a>
       </li>
-      <!-- the rest of the tabs -->
+      <!-- 其余各栏（中文映射） -->
       {% for tab in site.tabs %}
         <li class="nav-item{% if tab.url == page.url %}{{ ' active' }}{% endif %}">
           <a href="{{ tab.url | relative_url }}" class="nav-link">
             <i class="fa-fw {{ tab.icon }}"></i>
-            <span>{{ site.data.locales[include.lang].tabs[tab.title] | default: tab.title | upcase }}</span>
+            <span>
+              {% case tab.title %}
+                {% when 'categories' %}分类
+                {% when 'tags' %}标签
+                {% when 'archives' %}归档
+                {% when 'about' %}关于
+                {% else %}{{ tab.title }}
+              {% endcase %}
+            </span>
           </a>
         </li>
       {% endfor %}
