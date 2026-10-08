@@ -40,7 +40,7 @@ analytics:
 pageviews:
   provider:
 
-theme_mode:
+theme_mode: light
 
 cdn:
 
