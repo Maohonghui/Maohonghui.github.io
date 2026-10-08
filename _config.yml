@@ -109,6 +109,7 @@ defaults:
       path: ""
       type: posts
     values:
+      license: false
       layout: post
       comments: true
       toc: true
