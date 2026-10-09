@@ -1,40 +1,76 @@
 ---
 # 这两行 front matter 是必须的。
-# Jekyll 只处理「带 front matter 的文件」；没有它的话 .scss 可能被当成普通静态文件
-# 直接复制，结果产出 sleep-heatmap.scss 而不是 sleep-heatmap.css，
-# 页面上引用的 /assets/css/sleep-heatmap.css 就会 404（htmlproofer 也会报错）。
+# Jekyll 只处理「带 front matter 的文件」；没有它的话 .scss 会被当成普通静态文件
+# 直接复制，产出 .scss 而不是 .css，页面上引用的 .css 就会 404。
 ---
 
 /*!
- * 早睡打卡热力图样式
+ * 习惯打卡热力图样式
  * ---------------------------------------------------------------------------
  * 颜色统一用 Chirpy 主题的 CSS 变量，会自动跟随浅色 / 深色模式切换。
- * 只作用于 .sleep-heatmap 内部，不会影响站内其他元素。
+ * 只作用于 .habit-heatmap 内部，不会影响站内其他元素。
  */
 
-.sleep-heatmap {
-  margin: 1.75rem 0;
+/* ── 打卡页整体 ────────────────────────────────────────────── */
+
+.habits-intro {
+  margin-bottom: 1.5rem;
+  color: var(--text-muted-color, #6c757d);
+  font-size: 0.92rem;
+}
+
+.habits-note {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--main-border-color, rgba(128, 128, 128, 0.2));
+  color: var(--text-muted-color, #6c757d);
+  font-size: 0.82rem;
+}
+
+.habits-empty {
+  padding: 1.25rem 1.5rem;
+  border: 1px dashed var(--main-border-color, rgba(128, 128, 128, 0.35));
+  border-radius: 0.5rem;
+
+  h3 {
+    margin-top: 0;
+    font-size: 1.05rem;
+  }
+
+  p {
+    font-size: 0.88rem;
+    color: var(--text-muted-color, #6c757d);
+  }
+}
+
+/* ── 单个习惯的卡片 ────────────────────────────────────────── */
+
+.habit-heatmap {
+  margin: 0 0 2.25rem;
+  padding: 1.1rem 1.25rem 1.25rem;
+  border: 1px solid var(--main-border-color, rgba(128, 128, 128, 0.22));
+  border-radius: 0.6rem;
 
   &__head {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.5rem 0.75rem;
-    margin-bottom: 0.75rem;
+    gap: 0.4rem 0.75rem;
+    margin-bottom: 0.85rem;
   }
 
   &__title {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
   }
 
   &__range {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: var(--text-muted-color, #6c757d);
   }
 
-  &__threshold {
-    opacity: 0.8;
+  &__hint {
+    opacity: 0.85;
   }
 
   /* ── 统计数字 ─────────────────────────────────────────────── */
@@ -49,20 +85,20 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 4.5rem;
-    padding: 0.4rem 0.7rem;
+    min-width: 4.25rem;
+    padding: 0.38rem 0.65rem;
     border: 1px solid var(--main-border-color, rgba(128, 128, 128, 0.25));
     border-radius: 0.5rem;
   }
 
   &__stat-value {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.25;
   }
 
   &__stat-label {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: var(--text-muted-color, #6c757d);
     white-space: nowrap;
   }
@@ -85,72 +121,53 @@
     align-items: center;
     justify-content: flex-end;
     gap: 0.3rem;
-    margin-top: 0.6rem;
-    font-size: 0.75rem;
+    margin-top: 0.55rem;
+    font-size: 0.74rem;
     color: var(--text-muted-color, #6c757d);
-  }
-
-  &__note {
-    margin-top: 0.75rem;
-    margin-bottom: 0;
-    font-size: 0.8rem;
-    color: var(--text-muted-color, #6c757d);
-  }
-
-  &--empty {
-    padding: 1rem 1.25rem;
-    border: 1px dashed var(--main-border-color, rgba(128, 128, 128, 0.35));
-    border-radius: 0.5rem;
   }
 }
 
 /* ── SVG 内部元素 ──────────────────────────────────────────── */
-.shm-axis {
+
+.hhm-axis {
   font-size: 9px;
   fill: var(--text-muted-color, #6c757d);
 }
 
-.shm-month {
+.hhm-month {
   font-size: 10px;
 }
 
-.shm-grid {
+.hhm-grid {
   stroke: var(--main-border-color, rgba(128, 128, 128, 0.3));
   stroke-width: 1;
   stroke-dasharray: 2 2;
 }
 
-.shm-cell {
+.hhm-cell {
   transition: opacity 0.15s ease;
 }
 
-.shm-group:hover .shm-cell {
+.hhm-group:hover .hhm-cell {
   opacity: 0.7;
 }
 
-/* 没有记录：几乎透明的底 */
-.shm-cell.is-empty,
-.shm-swatch.is-empty {
+/* 没打卡：很淡的底 */
+.hhm-cell.is-empty,
+.hhm-swatch.is-empty {
   fill: var(--main-border-color, rgba(128, 128, 128, 0.18));
   background-color: var(--main-border-color, rgba(128, 128, 128, 0.18));
   opacity: 0.45;
 }
 
-/* 有记录但没早睡：偏红 */
-.shm-cell.is-late,
-.shm-swatch.is-late {
-  fill: #d9534f;
-  background-color: #d9534f;
-}
-
-/* 早睡：绿 */
-.shm-cell.is-early,
-.shm-swatch.is-early {
+/* 已打卡：绿 */
+.hhm-cell.is-done,
+.hhm-swatch.is-done {
   fill: #2e8840;
   background-color: #2e8840;
 }
 
-.shm-swatch {
+.hhm-swatch {
   display: inline-block;
   width: 11px;
   height: 11px;
@@ -158,21 +175,15 @@
   opacity: 1;
 }
 
-.shm-legend-label {
+.hhm-legend-label {
   margin: 0 0.15rem;
 }
 
-/* 深色模式下把绿色调亮一点，保证对比度 */
+/* 深色模式把绿色调亮，保证对比度 */
 [data-bs-theme='dark'] {
-  .shm-cell.is-early,
-  .shm-swatch.is-early {
+  .hhm-cell.is-done,
+  .hhm-swatch.is-done {
     fill: #3fae56;
     background-color: #3fae56;
-  }
-
-  .shm-cell.is-late,
-  .shm-swatch.is-late {
-    fill: #e2685f;
-    background-color: #e2685f;
   }
 }

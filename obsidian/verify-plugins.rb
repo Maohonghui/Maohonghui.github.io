@@ -14,12 +14,19 @@ module Jekyll
     def self.register(*); end
   end
 
-  module Logger
-    def self.info(*); end
+  # 有些插件会通过 Jekyll.logger 输出诊断信息，这里一起 stub 掉
+  class NullLogger
+    def info(*); end
 
-    def self.warn(*); end
+    def warn(*); end
 
-    def self.debug(*); end
+    def debug(*); end
+
+    def error(*); end
+  end
+
+  def self.logger
+    @logger ||= NullLogger.new
   end
 end
 
@@ -88,84 +95,53 @@ check("lqip 保留", data3["image"]["lqip"], "data:xx")
 
 puts
 puts "=" * 78
-puts "2) 早睡打卡解析"
+puts "2) Front Matter 中图片路径不匹配时的自动纠正"
 puts "=" * 78
 
-sample = <<~MD
-  # 早睡打卡
+# 这是为了让「手机上怎么写都不裂图」成立的关键一层。
+# Obsidian 的 Front Matter 是手写的，很容易漏掉 img/posts 这一段。
+require "tmpdir"
+require "fileutils"
 
-  > 说明里出现 2026-01-01 不应该被算进去
+Dir.mktmpdir do |dir|
+  FileUtils.mkdir_p(File.join(dir, "assets", "img", "posts"))
+  FileUtils.mkdir_p(File.join(dir, "assets"))
+  File.write(File.join(dir, "assets", "img", "posts", "cover.jpg"), "x")
+  File.write(File.join(dir, "assets", "legacy.jpg"), "x")
 
-  - [ ] 2026-10-08
-  - [x] 2026-10-09
-  - [X] 2026-10-10
-  - [x] 2026-10-11 23:05 07:30
-  - [x] 2026-10-12 22:40
-  - [x] 2026-10-13 1:30 9:00
-  - [x] 2026-10-15 23:00
-  | [x] | 2026-10-16 | 备注 |
-  - [x] 2026-10-17 23:59 06:00
-  - [x] 2026-13-45
-  - [x] 2026-02-30
-  - [x] 2026-10-18
-MD
+  fake_site = Struct.new(:source).new(dir)
+  # 清掉缓存，保证用新的临时目录
+  F.instance_variable_set(:@asset_index, nil)
+  F.instance_variable_set(:@asset_index_src, nil)
 
-entries = S.parse(sample)
+  check("路径完全正确时原样返回",
+        F.resolve_asset_path("/assets/img/posts/cover.jpg", fake_site),
+        "/assets/img/posts/cover.jpg")
 
-check("未打勾的 10-08 被忽略", entries.key?("2026-10-08"), false)
-check("说明文字里的日期被忽略", entries.key?("2026-01-01"), false)
-check("非法月份 2026-13-45 被忽略", entries.key?("2026-13-45"), false)
-check("非法日期 2026-02-30 被忽略", entries.key?("2026-02-30"), false)
-check("只打勾无时间", entries["2026-10-09"], { "sleep_at" => nil, "wake_at" => nil })
-check("大写 X 也算打勾", entries["2026-10-10"], { "sleep_at" => nil, "wake_at" => nil })
-check("入睡+起床时间", entries["2026-10-11"], { "sleep_at" => "23:05", "wake_at" => "07:30" })
-check("只有入睡时间", entries["2026-10-12"], { "sleep_at" => "22:40", "wake_at" => nil })
-check("个位数时间补零", entries["2026-10-13"], { "sleep_at" => "01:30", "wake_at" => "09:00" })
-check("表格写法", entries["2026-10-16"], { "sleep_at" => nil, "wake_at" => nil })
-check("共解析出 9 条", entries.size, 9)
+  check("少了 img/posts 时按文件名纠正",
+        F.resolve_asset_path("/assets/cover.jpg", fake_site),
+        "/assets/img/posts/cover.jpg")
 
-puts
-puts "  -- 时间与阈值判定 --"
-threshold = S.clock_to_minutes("23:00")
-{
-  "22:40" => true,
-  "23:00" => true,
-  "23:01" => false,
-  "01:30" => false,
-  "04:00" => false,
-  "00:30" => false,
-}.each do |clock, expected|
-  check("#{clock} 算早睡? #{expected}", S.clock_to_minutes(clock) <= threshold, expected)
+  check("只写文件名时按文件名纠正",
+        F.resolve_asset_path("/cover.jpg", fake_site),
+        "/assets/img/posts/cover.jpg")
+
+  check("直接在 assets 根目录的图片也能找到",
+        F.resolve_asset_path("/assets/legacy.jpg", fake_site),
+        "/assets/legacy.jpg")
+
+  check("找不到的图片保持原样（交给 htmlproofer 报错）",
+        F.resolve_asset_path("/assets/nope.jpg", fake_site),
+        "/assets/nope.jpg")
 end
-
-check("非法时间 24:00 归一化为 nil", S.normalize_clock("24:00"), nil)
-check("非法时间 12:60 归一化为 nil", S.normalize_clock("12:60"), nil)
-check("正常 09:05", S.normalize_clock("09:05"), "09:05")
 
 puts
 puts "=" * 78
-puts "3) 用真实打卡笔记跑一遍 build 的核心逻辑"
+puts "3) 早睡打卡的解析逻辑"
 puts "=" * 78
-
-# 造 5 天数据，验证统计与 grid_offset
-real = +"# 早睡打卡\n\n"
-[["2026-10-05", "22:10"], ["2026-10-06", "23:30"], ["2026-10-07", "22:00"]].each do |d, t|
-  real << "- [x] #{d} #{t}\n"
-end
-real << "- [ ] 2026-10-08\n"
-real << "- [x] 2026-10-09\n"
-
-parsed = S.parse(real)
-check("解析出 4 条", parsed.size, 4)
-check("10-05 入睡时间", parsed["2026-10-05"]["sleep_at"], "22:10")
-check("10-09 只打勾", parsed["2026-10-09"], { "sleep_at" => nil, "wake_at" => nil })
-
-# grid_offset：周一=0
-[[Date.new(2026, 10, 5), 0], [Date.new(2026, 10, 8), 3], [Date.new(2026, 10, 11), 6]].each do |d, expected|
-  actual = d.wday.zero? ? 6 : d.wday - 1
-  check("#{d} 的 grid_offset = #{expected}", actual, expected)
-  puts format("         (%s 是 %s)", d, %w[日 一 二 三 四 五 六][d.wday])
-end
+puts "  → 已拆到独立文件 obsidian/verify-checkin.rb"
+puts "    （那边的用例更全：多习惯、次日 10:00 为界的日期归属、统计口径）"
+puts "    运行： ruby obsidian/verify-checkin.rb"
 
 puts
 puts "=" * 78

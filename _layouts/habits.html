@@ -1,0 +1,47 @@
+---
+layout: page
+---
+
+{% assign ck = site.data.checkin %}
+
+{% if ck and ck.habits and ck.habits.size > 0 %}
+
+  <p class="habits-intro">
+    共记录 <strong>{{ ck.habits.size }}</strong> 个习惯，
+    统计区间 {{ ck.window.start }} ~ {{ ck.window.end }}。
+    把鼠标停在格子上（手机上是长按）可以看到那天的具体情况。
+  </p>
+
+  {% for habit in ck.habits %}
+    {% include habit-heatmap.html habit=habit lang=lang %}
+  {% endfor %}
+
+  <p class="habits-note">
+    数据来自 Obsidian 里的打卡笔记 —— 手机上点一下当天的方框就会同步过来，
+    不需要任何额外操作。
+  </p>
+
+{% else %}
+
+  <div class="habits-empty">
+    <h3>还没有读到打卡数据</h3>
+    <p>
+      打卡笔记还没有发布到仓库，或者里面还没有打勾的记录。
+      笔记的格式是这样：
+    </p>
+    <pre><code># 习惯打卡
+
+## 早睡
+- [x] 2026-10-08 23:30 07:30
+- [ ] 2026-10-07
+
+## 锻炼
+- [x] 2026-10-08
+- [ ] 2026-10-07</code></pre>
+    <p>
+      仓库里的路径由 <code>_config.yml</code> 的 <code>checkin.file</code> 决定，
+      默认是 <code>checkin.md</code>。
+    </p>
+  </div>
+
+{% endif %}

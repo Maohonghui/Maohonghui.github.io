@@ -135,14 +135,74 @@ module MaohonghuiBlog
       value.to_s.strip
     end
 
+    # ── 图片路径容错 ──────────────────────────────────────────────────────
+    #
+    # Obsidian 的 GitHub Publisher 有「Assets directory」和「Assets relative path」
+    # 两个设置，正文里的 ![[图片.jpg]] 会被转成 /assets/img/posts/图片.jpg。
+    # 但 Front Matter 里的 image.path 是**手写**的，很容易写成
+    #   /assets/图片.jpg            （少了 img/posts）
+    #   assets/img/posts/图片.jpg   （少了开头的斜杠）
+    #   图片.jpg                    （只有文件名）
+    # 这几种都会 404。
+    #
+    # 这里做一层兜底：如果按原路径找不到文件，就用**文件名**去 assets/ 目录里搜，
+    # 搜到唯一一个就自动纠正。这样你在手机上怎么写都不会裂图。
+
+    class << self
+      # 延时构建「文件名 => 仓库内真实路径」的索引
+      def asset_index(site)
+        return @asset_index if defined?(@asset_index) && @asset_index && @asset_index_src == site.source
+
+        index = {}
+        assets_root = File.join(site.source, "assets")
+        if File.directory?(assets_root)
+          Dir.glob(File.join(assets_root, "**", "*")).each do |file|
+            next unless File.file?(file)
+
+            rel = "/" + file.sub(%r{\A#{Regexp.escape(site.source)}/?}, "").tr("\\", "/")
+            key = File.basename(rel).downcase
+            index[key] ||= []
+            index[key] << rel
+          end
+        end
+
+        @asset_index_src = site.source
+        @asset_index = index
+      end
+
+      # 尝试把 path 修正成仓库里真实存在的文件
+      def resolve_asset_path(path, site)
+        return path if site.nil? || path.nil?
+
+        exact = File.join(site.source, path.sub(%r{\A/}, ""))
+        return path if File.file?(exact)
+
+        index = asset_index(site)
+        return path if index.empty?
+
+        candidates = index[File.basename(path).downcase]
+        return path if candidates.nil? || candidates.empty?
+
+        if candidates.size == 1
+          Jekyll.logger.info "FrontMatter:", "图片路径已自动纠正 #{path} -> #{candidates.first}"
+          candidates.first
+        else
+          Jekyll.logger.warn "FrontMatter:",
+                             "图片 #{path} 找不到，同名文件有多个，请写全路径：#{candidates.join(', ')}"
+          path
+        end
+      end
+    end
+
     # 对一篇文章的 data 做修正
-    def apply!(data)
+    def apply!(data, site = nil)
       PB_KEYS.each { |key| data.delete(key) }
 
       return unless data.key?("image")
 
       original = data["image"]
       path = normalize_path(extract_path(original))
+      path = resolve_asset_path(path, site) unless path.nil?
 
       if path.nil?
         # 有 image: 但没有有效路径 —— 直接移除，模板就会走「无封面」分支
@@ -175,10 +235,10 @@ module MaohonghuiBlog
 end
 
 Jekyll::Hooks.register :posts, :post_init do |post|
-  MaohonghuiBlog::FrontMatterNormalizer.apply!(post.data)
+  MaohonghuiBlog::FrontMatterNormalizer.apply!(post.data, post.site)
 end
 
 # 页面（_tabs 等）也顺手修一下，保证 head.html 生成社交预览图时不会出错
 Jekyll::Hooks.register :pages, :post_init do |page|
-  MaohonghuiBlog::FrontMatterNormalizer.apply!(page.data)
+  MaohonghuiBlog::FrontMatterNormalizer.apply!(page.data, page.site)
 end

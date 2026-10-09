@@ -18,9 +18,10 @@ tabs:
   tags: 标签
   archives: 归档
   about: 关于
-  # 自建的「早睡」打卡页（_tabs/sleep.md）。
-  # 没有这一行的话，那个页面的浏览器标题会变成空的。
-  sleep: 早睡
+  # 自建的「打卡」页（_tabs/habits.md）。
+  # 键名必须和 _tabs/habits.md 里 front matter 的 title 一致，
+  # 否则那个页面的浏览器标题会变成空的。
+  habits: 打卡
 
 # the text displayed in the search bar & search results
 search:
