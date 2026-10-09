@@ -48,17 +48,21 @@ module MaohonghuiBlog
     # ## 早睡  /  ### 锻炼  —— 用来区分不同习惯
     HABIT_HEADING_RE = /^\s{0,3}\#{2,6}\s+(.+?)\s*$/
 
-    # 真实的打卡行：- [x] 2026-10-08 23:30 07:30
-    #               * [X] 2026-10-08
+    # 真实的打卡行。两种写法都要认：
+    #
+    #   - [x] 2026-10-08 23:30 07:30      ← 日期在前（手写）
+    #   - [x] 23:30 2026-10-08 07:30      ← 时间在前（Checkbox Time Tracker 自动插入）
+    #   - [x] 2026-10-08                  ← 只有日期
+    #   - [x] 23:30                       ← 只有时间（日期从行里别处找）
     #
     # 开头必须真的是列表项（可缩进），这是关键：
-    # 笔记顶部的说明文字里会写「例如 - [x] 2026-10-08 23:30 07:30」，
+    # 笔记顶部的说明文字里会写「例如 - [x] 2026-10-08 23:30 这样」，
     # 如果不锚定行首，那句说明里的示例会被当成真实打卡数据解析进去。
     # `>` 引用块里的内容前面是 `>`，所以会被正确排除。
-    CHECKBOX_RE = /^\s*(?:[-*+]|\d+\.)\s*\[([ xX✓✔])\]\s*(\d{4}-\d{2}-\d{2})([^\n]*)$/
+    CHECKBOX_RE = /^\s*(?:[-*+]|\d+\.)\s*\[([ xX✓✔])\]([^\n]*)$/
 
-    # 从行尾里挑时间。先贪心地匹配任何 H:MM，再交给 normalize_clock 过滤，
-    # 这样 24:00 这种非法时间不会把后面的有效时间挤到错误的位置。
+    # 从行尾里找日期和 HH:MM 时间，不依赖它们谁前谁后
+    DATE_RE = /(\d{4}-\d{2}-\d{2})/
     TIME_RE = /(\d{1,2}:\d{2})/
 
     # 没写 ## 标题时，整篇归到这个默认习惯
@@ -173,7 +177,14 @@ module MaohonghuiBlog
         checked = match[1].downcase == "x" || ["✓", "✔"].include?(match[1])
         next unless checked
 
-        date = match[2]
+        rest = match[2].to_s
+
+        # 日期：优先取复选框后面那段里的日期；没有就退回整行找
+        # （Checkbox Time Tracker 可能把时间插在日期前面）
+        date_match = rest.match(DATE_RE) || line.match(DATE_RE)
+        next if date_match.nil?
+
+        date = date_match[1]
 
         # 校验日期真实存在，挡掉 2026-13-45 这种
         begin
@@ -182,7 +193,9 @@ module MaohonghuiBlog
           next
         end
 
-        times = match[3].to_s.scan(TIME_RE).flatten.map { |t| normalize_clock(t) }.compact
+        # 时间：把日期本身挖掉再找，避免把 "2026-10-08" 里的 10:08 之类误认成时间
+        times_source = rest.gsub(date, " ")
+        times = times_source.scan(TIME_RE).flatten.map { |t| normalize_clock(t) }.compact
         sleep_at = times[0]
         wake_at = times[1]
 

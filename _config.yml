@@ -105,7 +105,13 @@ baseurl: ""
 #     ## 锻炼
 #     - [x] 2026-10-08
 checkin:
-  file: checkin.md        # 打卡笔记在仓库里的路径
+  # 打卡笔记由手机 Obsidian 的 GitHub Publisher 发布，而那个插件只能发到
+  # _posts/ 一个目录（没有「按笔记指定路径」的功能）。
+  # 所以打卡笔记放在 _posts/checkin.md：
+  #   * 文件名没有日期前缀，Jekyll 不会把它当成普通文章排版
+  #   * front matter 里写了 published: false，也不会出现在首页/归档/feed
+  #   * 这个插件照常读它，把打卡数据渲染成热力图
+  file: _posts/checkin.md
   days: 91                # 热力图统计多少天（13 周）
   # 日期归属分界点。你的作息是「当天 20:00 → 次日 10:00」，
   # 所以凌晨的时间算前一天：10-09 01:10 会归到 10-08。

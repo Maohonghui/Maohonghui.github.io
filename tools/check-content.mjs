@@ -27,6 +27,15 @@ const POSTS_DIR = '_posts';
 const problems = [];
 const warnings = [];
 
+/**
+ * _posts/ 里允许存在的「非文章」文件。
+ *
+ * GitHub Publisher 只能把笔记发到 _posts/ 一个目录，所以打卡笔记这类
+ * 纯数据文件也放在这里：它靠 `published: false` 不出现在博客上，
+ * 由 _plugins/sleep_log.rb 读取。
+ */
+const NON_POST_FILES = new Set(['checkin.md']);
+
 function readUtf8(p) {
   return fs.readFileSync(p, 'utf8');
 }
@@ -113,12 +122,44 @@ console.log(`检查 ${files.length} 篇文章...\n`);
 
 const FILENAME_RE = /^\d{4}-\d{2}-\d{2}-.+\.(md|markdown|html)$/;
 
+/** 数据文件（不是文章）：只检查它是否安全地对博客隐藏 */
+function checkNonPostFile(file) {
+  const full = path.join(POSTS_DIR, file);
+  const text = readUtf8(full);
+  const { front } = splitFrontMatter(text);
+
+  if (front === null) {
+    problems.push(`${file}: 数据文件必须有 front matter（至少要有 published: false）`);
+    return false;
+  }
+
+  const published = yamlValue(front, 'published');
+  const hidden = yamlValue(front, 'hidden');
+
+  if (published === 'false' || hidden === 'true') {
+    console.log(`✓ ${file}  (数据文件，已对博客隐藏)`);
+    return true;
+  }
+
+  problems.push(
+    `${file}: 这是数据文件而不是文章，必须写 published: false，` +
+      `否则它会作为一篇文章出现在首页上`
+  );
+  return false;
+}
+
 for (const file of files) {
   const full = path.join(POSTS_DIR, file);
   const notes = [];
 
   if (!fs.statSync(full).isFile()) {
     problems.push(`${file}: 不是普通文件（Jekyll 会忽略它，建议删掉）`);
+    continue;
+  }
+
+  // 数据文件单独走一条检查路径
+  if (NON_POST_FILES.has(file)) {
+    checkNonPostFile(file);
     continue;
   }
 
