@@ -70,6 +70,21 @@ cases = [
   ["空哈希", {}, nil],
   ["nil", nil, nil],
   ["空字符串", "", nil],
+
+  # ── 回归：老的博客文章模板会让人把 Obsidian 嵌入语法整串贴进 path ──
+  # 没剥掉 ![[ ]] 的话会被当成普通文本做 URL 编码，
+  # 生成 /%21%5B%5Bassets/... 这种坏链接，封面直接裂。
+  #
+  # 注意这里只测「路径规范化」这一层（不传 site）。
+  # 真正把路径修正到磁盘上真实文件的是下面的 resolve_asset_path，
+  # 那一层单独测。
+  ["嵌入语法 ![[文件名]]", "![[cover.jpg]]", "/cover.jpg"],
+  ["嵌入语法 + path: 前缀（双重错误）", "path:![[assets/cover.jpg]]", "/cover.jpg"],
+  ["嵌入语法剥掉 assets/ 前缀", "![[assets/img/posts/cover.jpg]]", "/img/posts/cover.jpg"],
+  ["嵌入语法带中文", "![[我的封面.jpg]]", "/%E6%88%91%E7%9A%84%E5%B0%81%E9%9D%A2.jpg"],
+  ["内部链接 [[文件名]]", "[[cover.jpg]]", "/cover.jpg"],
+  # 不带括号的正常相对路径要保持原样，不能去掉 assets/
+  ["裸的 assets/ 前缀保持不变", "assets/cover.jpg", "/assets/cover.jpg"],
 ]
 
 cases.each do |label, input, expected|

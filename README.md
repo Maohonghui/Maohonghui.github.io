@@ -38,6 +38,21 @@ obsidian/使用说明.md          手机端完整操作说明 ★
 obsidian/push-to-github.mjs  不开 git 也能推送的脚本
 ```
 
+## Obsidian 侧的文件（在你的库里，不在这个仓库）
+
+| 位置 | 作用 |
+| --- | --- |
+| `博客/` | 写文章的地方。新建笔记会自动套模板、自动命名 |
+| `记录/Templates/博客文章模板.md` | 文章模板：自动命名 `YYYY-MM-DD-HH-mm-ss` + 填 Front Matter |
+| `记录/Templates/早睡打卡生成模板.md` | 给 `checkin.md` 续上后续日期（补到年底） |
+| `记录/Templates/打卡-记录当前时间.md` | 给光标所在行打勾并写入当前时间（保底方案） |
+| `checkin.md` | 打卡清单（84 天到年底），发布后成为 `_posts/checkin.md` |
+
+Templater 的文件夹模板配置：
+`folder_templates: [{ folder: "博客", template: "记录/Templates/博客文章模板.md" }]`，
+并且 `trigger_on_file_creation` 与 `enable_folder_templates` 都要为 `true`
+（这两个开关不打开的话，在 `博客/` 里新建笔记不会自动套模板）。
+
 ---
 
 ## 三个自定义插件（`_plugins/`）

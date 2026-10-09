@@ -83,8 +83,23 @@ module MaohonghuiBlog
         # 先处理带引号的形式，这样路径里含空格也不会被截断。
         matched = value.match(/\Apath\s*:\s*(["'])(.+)\1\z/im) ||
                   value.match(/\Apath\s*:\s*(.+)\z/im)
-        return matched[2].strip if matched && matched.size > 2
-        return matched[1].strip if matched
+        value = matched ? (matched[2] || matched[1]).strip : value
+
+        # 情况三：用户直接把 Obsidian 的嵌入语法贴了进来。
+        # 这是最容易踩的坑 —— 在 Obsidian 里插图片会得到 ![[图片.jpg]]，
+        # 很多人就直接把它粘到 image.path 里：
+        #
+        #     image: path:![[assets/Screenshot_xxx.jpg]]
+        #
+        # 如果不剥掉 ![[ ]]，路径会被当成普通文本做 URL 编码，
+        # 最终生成 /%21%5B%5Bassets/... 这种坏链接。
+        #
+        # 注意：只有确认是嵌入语法时才去掉 "assets/" 前缀。
+        # `assets/img/posts/a.jpg` 这种不带括号的正常相对路径要保持原样，
+        # 否则会丢一层目录。
+        if (wiki = value.match(/\A!?\[\[(.*?)\]\]\z/m))
+          value = wiki[1].strip.sub(%r!\Aassets/!i, "")
+        end
 
         value
       when Hash
